@@ -1,8 +1,16 @@
 import unittest
 from chargify import Chargify, ChargifyError
 
+class ChargifyHttpClientStub(object):
+    
+    def make_request(self, url, method, data, api_key):
+        return url, method, data
+        
 class ChargifyTestCase(unittest.TestCase):
     
+    def setUp(self):
+        self.chargify = Chargify('api_key','subdomain',client=ChargifyHttpClientStub())
+            
     def assertResult(self, result, expected_url, expected_method, expected_data):
         """
         A little helper method to help verify that the correct URL, HTTP method, and POST data are
@@ -17,22 +25,20 @@ class ChargifyTestCase(unittest.TestCase):
 class TestCustomers(ChargifyTestCase):
     
     def test_construct_request(self):
-        chargify = Chargify('api_key','subdomain')
-        
         # List
-        result = chargify.customers.construct_request()
+        result = self.chargify.customers()
         self.assertResult(result,'https://subdomain.chargify.com/customers.json','GET',None)
 
         # Read/show (via chargify id)
-        result = chargify.customers.construct_request(customer_id=123)
+        result = self.chargify.customers(customer_id=123)
         self.assertResult(result,'https://subdomain.chargify.com/customers/123.json','GET',None)
         
         # Read/show (via reference value)
-        result = chargify.customers.lookup.construct_request(reference=123)
+        result = self.chargify.customers.lookup(reference=123)
         self.assertResult(result,'https://subdomain.chargify.com/customers/lookup.json?reference=123','GET',None)
         
         # Create
-        result = chargify.customers.create.construct_request(data={
+        result = self.chargify.customers.create(data={
             'customer':{
                 'first_name':'Joe',
                 'last_name':'Blow',
@@ -43,7 +49,7 @@ class TestCustomers(ChargifyTestCase):
             '{"customer": {"first_name": "Joe", "last_name": "Blow", "email": "joe@example.com"}}')
             
         # Edit/update
-        result = chargify.customers.update.construct_request(customer_id=123,data={
+        result = self.chargify.customers.update(customer_id=123,data={
             'customer':{
                 'email':'joe@example.com'
             }
@@ -52,7 +58,7 @@ class TestCustomers(ChargifyTestCase):
             '{"customer": {"email": "joe@example.com"}}')
         
         # Delete
-        result = chargify.customers.delete.construct_request(customer_id=123)
+        result = self.chargify.customers.delete(customer_id=123)
         self.assertResult(result,'https://subdomain.chargify.com/customers/123.json','DELETE',None)
 
 class TestProducts(ChargifyTestCase):
@@ -61,15 +67,15 @@ class TestProducts(ChargifyTestCase):
         chargify = Chargify('api_key','subdomain')
         
         # List
-        result = chargify.products.construct_request()
+        result = self.chargify.products()
         self.assertResult(result,'https://subdomain.chargify.com/products.json','GET',None)
         
         # Read/show (via chargify id)
-        result = chargify.products.construct_request(product_id=123)
+        result = self.chargify.products(product_id=123)
         self.assertResult(result,'https://subdomain.chargify.com/products/123.json','GET',None)
         
         # Read/show (via api handle)
-        result = chargify.products.handle.construct_request(handle='myhandle')
+        result = self.chargify.products.handle(handle='myhandle')
         self.assertResult(result,'https://subdomain.chargify.com/products/handle/myhandle.json','GET',None)
 
 class TestSubscriptions(ChargifyTestCase):
@@ -78,15 +84,15 @@ class TestSubscriptions(ChargifyTestCase):
         chargify = Chargify('api_key','subdomain')
         
         # List
-        result = chargify.customers.subscriptions.construct_request(customer_id=123)
+        result = self.chargify.customers.subscriptions(customer_id=123)
         self.assertResult(result,'https://subdomain.chargify.com/customers/123/subscriptions.json','GET',None)
         
         # Read
-        result = chargify.subscriptions.construct_request(subscription_id=123)
+        result = self.chargify.subscriptions(subscription_id=123)
         self.assertResult(result,'https://subdomain.chargify.com/subscriptions/123.json','GET',None)
         
         # Create
-        result = chargify.subscriptions.create.construct_request(data={
+        result = self.chargify.subscriptions.create(data={
             'subscription':{
                 'product_handle':'my_product',
                 'customer_attributes':{
@@ -105,7 +111,7 @@ class TestSubscriptions(ChargifyTestCase):
             '{"subscription": {"product_handle": "my_product", "credit_card_attributes": {"expiration_month": "10", "full_number": "1", "expiration_year": "2020"}, "customer_attributes": {"first_name": "Joe", "last_name": "Blow", "email": "joe@example.com"}}}')
             
         # Update
-        result = chargify.subscriptions.update.construct_request(data={
+        result = self.chargify.subscriptions.update(data={
             'subscription':{
                 'credit_card_attributes':{
                     'full_number':'2',
@@ -118,7 +124,7 @@ class TestSubscriptions(ChargifyTestCase):
             '{"subscription": {"credit_card_attributes": {"expiration_month": "10", "full_number": "2", "expiration_year": "2030"}}}')
         
         # Delete
-        result = chargify.subscriptions.delete.construct_request(subscription_id=123,data={
+        result = self.chargify.subscriptions.delete(subscription_id=123,data={
             'subscription':{
                 'cancellation_message':'Goodbye!'
             }
@@ -132,7 +138,7 @@ class TestCharges(ChargifyTestCase):
         chargify = Chargify('api_key','subdomain')
         
         # Create
-        result = chargify.subscriptions.charges.create.construct_request(subscription_id=123,data={
+        result = self.chargify.subscriptions.charges.create(subscription_id=123,data={
             'charge':{
                 'amount':'1.00',
                 'memo':'This is the description of the one time charge.'
@@ -147,11 +153,11 @@ class TestComponents(ChargifyTestCase):
         chargify = Chargify('api_key','subdomain')
         
         # List
-        result = chargify.subscriptions.components.usages.construct_request(subscription_id=123,component_id=456)
+        result = self.chargify.subscriptions.components.usages(subscription_id=123,component_id=456)
         self.assertResult(result,'https://subdomain.chargify.com/subscriptions/123/components/456/usages.json','GET',None)
    
         # Create
-        result = chargify.subscriptions.components.usages.create.construct_request(subscription_id=123,component_id=456,data={
+        result = self.chargify.subscriptions.components.usages.create(subscription_id=123,component_id=456,data={
             'usage':{
                 'quantity':5,
                 'memo':'My memo'
@@ -166,7 +172,7 @@ class TestMigrations(ChargifyTestCase):
         chargify = Chargify('api_key','subdomain')
         
         # Create
-        result = chargify.subscriptions.migrations.create.construct_request(subscription_id=123,data={
+        result = self.chargify.subscriptions.migrations.create(subscription_id=123,data={
             'product_id':1234
         })
         self.assertResult(result,'https://subdomain.chargify.com/subscriptions/123/migrations.json','POST',
@@ -178,7 +184,7 @@ class TestReactivate(ChargifyTestCase):
         chargify = Chargify('api_key','subdomain')
         
         # Reactivate
-        result = chargify.subscriptions.reactivate.update.construct_request(subscription_id=123)
+        result = self.chargify.subscriptions.reactivate.update(subscription_id=123)
         self.assertResult(result,'https://subdomain.chargify.com/subscriptions/123/reactivate.json','PUT',None)
 
 class TestTransactions(ChargifyTestCase):
@@ -187,11 +193,11 @@ class TestTransactions(ChargifyTestCase):
         chargify = Chargify('api_key','subdomain')
         
         # List transactions for a site
-        result = chargify.transactions.construct_request()
+        result = self.chargify.transactions()
         self.assertResult(result,'https://subdomain.chargify.com/transactions.json','GET',None)
         
         # List transactions for a subscription
-        result = chargify.subscriptions.transactions.construct_request(subscription_id=123)
+        result = self.chargify.subscriptions.transactions(subscription_id=123)
         self.assertResult(result,'https://subdomain.chargify.com/subscriptions/123/transactions.json','GET',None)
                      
 if __name__ == "__main__":

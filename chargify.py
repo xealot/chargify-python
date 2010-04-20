@@ -32,21 +32,69 @@ IDENTIFIERS = {
     'handle':'handle'
 }
 
+class ChargifyHttpClient(object):
+    """
+    Extracted from the main Chargify class so it can be stubbed out during testing.
+    """
+    
+    def make_request(self, url, method, data, api_key):
+        """
+        Actually responsible for making the HTTP request.
+        :param url: The URL to load.
+        :param method: The HTTP method to use.
+        :param data: Any POST data that should be included with the request.
+        """
+        opener = urllib2.build_opener(urllib2.HTTPHandler)
+        request = urllib2.Request(url=url, data=data)
+        
+        # Build header
+        request.get_method = lambda: method
+        request.add_header('Authorization', 'Basic %s' % base64.encodestring('%s:%s' % (api_key, 'x'))[:-1])
+        request.add_header('User-Agent', 'Chargify Python Client')
+        request.add_header('Accept', 'application/json')
+        request.add_header('Content-Type', 'application/json')
+        
+        # Make request and trap for HTTP errors
+        try:
+            response = opener.open(request)
+            result = response.read()
+        except urllib2.HTTPError, e:
+            if e.code == 401:
+                raise ChargifyUnauthorizedError(e)
+            elif e.code == 403:
+                raise ChargifyForbiddenError(e)
+            elif e.code == 404:
+                raise ChargifyNotFoundError(e)
+            elif e.code == 422:
+                raise ChargifyUnprocessableEntityError(e)
+            elif e.code == 500:
+                raise ChargifyServerError(e)
+            else:
+                raise ChargifyError(e)
+        except urllib2.URLError, e:
+            raise ChargifyConnectionError(e)
+            
+        # Parse and return JSON Result
+        return simplejson.loads(result)
+        
 class Chargify(object):
     api_key = ''
     sub_domain = ''
     path = []
     domain = 'https://%s.chargify.com/'
+    client = None
     
-    def __init__(self, api_key, sub_domain, path=None):
+    def __init__(self, api_key, sub_domain, path=None, client=None):
         """
         :param api_key: The API key for your Chargify account.
         :param sub_domain: The sub domain of your Chargify account.
         :param path: The current path constructed for this request. 
+        :param client: The HTTP client to use to make the request.
         """
         self.api_key = api_key
         self.sub_domain = sub_domain
         self.path = path or []
+        self.client = client or ChargifyHttpClient()
     
     def __getattr__(self, attr):
         """
@@ -55,7 +103,7 @@ class Chargify(object):
         try:
             return object.__getattr__(self, attr)
         except AttributeError:
-            return Chargify(self.api_key, self.sub_domain, self.path + [attr])
+            return Chargify(self.api_key, self.sub_domain, self.path + [attr], self.client)
 
     def construct_request(self, **kwargs):
         """
@@ -95,49 +143,9 @@ class Chargify(object):
         url = url + '/'.join(path) + '.json' + args
         
         return url, method, data
-      
-    def make_request(self, url, method, data):
-        """
-        Actually responsible for making the HTTP request.
-        :param url: The URL to load.
-        :param method: The HTTP method to use.
-        :param data: Any POST data that should be included with the request.
-        """
-        opener = urllib2.build_opener(urllib2.HTTPHandler)
-        request = urllib2.Request(url=url, data=data)
-        
-        # Build header
-        request.get_method = lambda: method
-        request.add_header('Authorization', 'Basic %s' % base64.encodestring('%s:%s' % (self.api_key, 'x'))[:-1])
-        request.add_header('User-Agent', 'Chargify Python Client')
-        request.add_header('Accept', 'application/json')
-        request.add_header('Content-Type', 'application/json')
-        
-        # Make request and trap for HTTP errors
-        try:
-            response = opener.open(request)
-            result = response.read()
-        except urllib2.HTTPError, e:
-            if e.code == 401:
-                raise ChargifyUnauthorizedError(e)
-            elif e.code == 403:
-                raise ChargifyForbiddenError(e)
-            elif e.code == 404:
-                raise ChargifyNotFoundError(e)
-            elif e.code == 422:
-                raise ChargifyUnprocessableEntityError(e)
-            elif e.code == 500:
-                raise ChargifyServerError(e)
-            else:
-                raise ChargifyError(e)
-        except urllib2.URLError, e:
-            raise ChargifyConnectionError(e)
-            
-        # Parse and return JSON Result
-        return simplejson.loads(result)
             
     def __call__(self, **kwargs):
         url, method, data = self.construct_request(**kwargs)
-        return self.make_request(url, method, data)
+        return self.client.make_request(url, method, data, self.api_key)
         
         
