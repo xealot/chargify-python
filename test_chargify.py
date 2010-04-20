@@ -159,6 +159,40 @@ class TestComponents(ChargifyTestCase):
         })
         self.assertResult(result,'https://subdomain.chargify.com/subscriptions/123/components/456/usages.json','POST',
             '{"usage": {"memo": "My memo", "quantity": 5}}')
-            
+
+class TestMigrations(ChargifyTestCase):
+    
+    def test_construct_request(self):
+        chargify = Chargify('api_key','subdomain')
+        
+        # Create
+        result = chargify.subscriptions.migrations.create.construct_request(subscription_id=123,data={
+            'product_id':1234
+        })
+        self.assertResult(result,'https://subdomain.chargify.com/subscriptions/123/migrations.json','POST',
+            '{"product_id": 1234}')
+
+class TestReactivate(ChargifyTestCase):
+    
+    def test_construct_request(self):
+        chargify = Chargify('api_key','subdomain')
+        
+        # Reactivate
+        result = chargify.subscriptions.reactivate.update.construct_request(subscription_id=123)
+        self.assertResult(result,'https://subdomain.chargify.com/subscriptions/123/reactivate.json','PUT',None)
+
+class TestTransactions(ChargifyTestCase):
+    
+    def test_construct_request(self):
+        chargify = Chargify('api_key','subdomain')
+        
+        # List transactions for a site
+        result = chargify.transactions.construct_request()
+        self.assertResult(result,'https://subdomain.chargify.com/transactions.json','GET',None)
+        
+        # List transactions for a subscription
+        result = chargify.subscriptions.transactions.construct_request(subscription_id=123)
+        self.assertResult(result,'https://subdomain.chargify.com/subscriptions/123/transactions.json','GET',None)
+                     
 if __name__ == "__main__":
     unittest.main()
