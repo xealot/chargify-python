@@ -111,7 +111,7 @@ class TestSubscriptions(ChargifyTestCase):
             '{"subscription": {"product_handle": "my_product", "credit_card_attributes": {"expiration_month": "10", "full_number": "1", "expiration_year": "2020"}, "customer_attributes": {"first_name": "Joe", "last_name": "Blow", "email": "joe@example.com"}}}')
             
         # Update
-        result = self.chargify.subscriptions.update(data={
+        result = self.chargify.subscriptions.update(subscription_id=123,data={
             'subscription':{
                 'credit_card_attributes':{
                     'full_number':'2',
@@ -120,7 +120,7 @@ class TestSubscriptions(ChargifyTestCase):
                 }
             }
         })
-        self.assertResult(result,'https://subdomain.chargify.com/subscriptions.json','PUT',
+        self.assertResult(result,'https://subdomain.chargify.com/subscriptions/123.json','PUT',
             '{"subscription": {"credit_card_attributes": {"expiration_month": "10", "full_number": "2", "expiration_year": "2030"}}}')
         
         # Delete

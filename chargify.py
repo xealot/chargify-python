@@ -78,6 +78,9 @@ class ChargifyHttpClient(object):
         return simplejson.loads(result)
         
 class Chargify(object):
+    """
+    A client for the Chargify API.
+    """
     api_key = ''
     sub_domain = ''
     path = []
