@@ -6,6 +6,9 @@ See the test cases for a full list of examples for all supported API calls.
 
 	chargify = Chargify('api_key','subdomain')
 
+	# List products
+    result = chargify.products()
+    
 	# List customers
 	result = chargify.customers()
 
@@ -56,3 +59,14 @@ See the test cases for a full list of examples for all supported API calls.
     result = chargify.subscriptions.migrations.create(subscription_id=123,data={
         'product_id':1234
     })
+    
+    # Add a one time charge to a subscription
+    result = chargify.subscriptions.charges.create(subscription_id=123,data={
+        'charge':{
+            'amount':'1.00',
+            'memo':'This is the description of the one time charge.'
+        }
+    })
+    
+    # List transactions for a subscription
+    result = chargify.subscriptions.transactions(subscription_id=123)
