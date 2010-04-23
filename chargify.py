@@ -53,6 +53,8 @@ class ChargifyHttpClient(object):
         request.add_header('User-Agent', 'Chargify Python Client')
         request.add_header('Accept', 'application/json')
         request.add_header('Content-Type', 'application/json')
+        if data is None:
+            request.add_header('Content-Length','0')
         
         # Make request and trap for HTTP errors
         try:
