@@ -6,13 +6,26 @@ import base64
 # Define all exceptions
 # Corresponds to HTTP response codes specified here:
 # http://support.chargify.com/faqs/api/api-user-guide
-class ChargifyError(Exception):pass
+class ChargifyError(Exception):
+    def __init__(self, error_data=None, *a, **kw):
+        self.error_data = error_data or {}
+        super(ChargifyError, self).__init__(*a, **kw)
+
 class ChargifyConnectionError(ChargifyError):pass
 class ChargifyUnauthorizedError(ChargifyError):pass
 class ChargifyForbiddenError(ChargifyError):pass
 class ChargifyNotFoundError(ChargifyError):pass
 class ChargifyUnprocessableEntityError(ChargifyError):pass
 class ChargifyServerError(ChargifyError):pass
+
+ERROR_CODES = {
+    201: False,
+    401: ChargifyUnauthorizedError,
+    403: ChargifyForbiddenError,
+    404: ChargifyNotFoundError,
+    422: ChargifyUnprocessableEntityError,
+    500: ChargifyServerError,
+}
 
 # Maps certain function names to HTTP verbs
 VERBS = {
@@ -59,25 +72,23 @@ class ChargifyHttpClient(object):
         # Make request and trap for HTTP errors
         try:
             response = opener.open(request)
-            result = response.read()
         except urllib2.HTTPError, e:
-            if e.code == 401:
-                raise ChargifyUnauthorizedError(e)
-            elif e.code == 403:
-                raise ChargifyForbiddenError(e)
-            elif e.code == 404:
-                raise ChargifyNotFoundError(e)
-            elif e.code == 422:
-                raise ChargifyUnprocessableEntityError(e)
-            elif e.code == 500:
-                raise ChargifyServerError(e)
-            else:
-                raise ChargifyError(e)
+            response = e
         except urllib2.URLError, e:
             raise ChargifyConnectionError(e)
+
+        result = response.read()
+
+        try:
+            data = simplejson.loads(result)
+        except ValueError:
+            data = {'body': result} #Is not JSON
+
+        if response.code in ERROR_CODES and ERROR_CODES[response.code] is not False:
+            error_class = ERROR_CODES[e.code]
+            raise error_class(data)
             
-        # Parse and return JSON Result
-        return simplejson.loads(result)
+        return data
         
 class Chargify(object):
     """
@@ -152,5 +163,4 @@ class Chargify(object):
     def __call__(self, **kwargs):
         url, method, data = self.construct_request(**kwargs)
         return self.client.make_request(url, method, data, self.api_key)
-        
         
